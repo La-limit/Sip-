@@ -20,6 +20,7 @@
             display: grid;
             grid-template-columns: repeat(7, 1fr);
             gap: 4px;
+            grid-auto-rows: 100px; /* Fixed row height for consistent day cell size */
         }
        .day-cell {
             padding: 8px;
@@ -29,13 +30,13 @@
             border: 1px solid #e2e8f0;
             cursor: pointer;
             transition: all 0.2s ease-in-out;
-            min-height: 80px; /* Adjust as needed */
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
+            justify-content: flex-start; /* Align content to the top */
             align-items: center;
             font-size: 0.9rem;
             position: relative;
+            overflow: hidden; /* Hide content that overflows fixed height */
         }
        .day-cell.header {
             background-color: #24543b; /* Dark green from brand identity */
@@ -43,7 +44,7 @@
             font-weight: bold;
             cursor: default;
             font-size: 1rem;
-            min-height: 40px;
+            min-height: 40px; /* Keep min-height for headers */
             display: flex;
             align-items: center;
             justify-content: center;
@@ -95,10 +96,31 @@
             border-radius: 10px;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
         }
+        /* New styles for event display in cell */
+        .event-display-in-cell {
+            font-size: 0.7rem; /* Smaller font for event names in cell */
+            color: #1a3b2a; /* Darker brand green */
+            width: 100%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            text-align: center;
+            line-height: 1.2;
+            padding: 0 2px;
+            margin-top: 4px; /* Space between day number and event name */
+        }
+        .more-events-indicator {
+            font-size: 0.65rem; /* Even smaller for "+X more" */
+            color: #555;
+            margin-top: 2px;
+        }
         @media (max-width: 768px) {
            .day-cell {
-                min-height: 60px;
-                font-size: 0.8rem;
+                min-height: 80px; /* Ensure sufficient height */
+                font-size: 0.75rem; /* Smaller font on mobile */
+            }
+            .day-cell .font-bold.text-lg {
+                font-size: 1.1rem; /* Adjust day number size */
             }
            .event-indicator {
                 width: 6px;
@@ -108,6 +130,12 @@
             }
            .logo-container img {
                 max-width: 100px;
+            }
+            .event-display-in-cell {
+                font-size: 0.6rem; /* Even smaller font on mobile */
+            }
+            .more-events-indicator {
+                font-size: 0.55rem;
             }
         }
     </style>
@@ -322,7 +350,8 @@
             // Add days of the month
             for (let day = 1; day <= daysInMonth; day++) {
                 const dateString = `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-                const hasEvents = eventsData.some(event => event.date === dateString);
+                const eventsForThisDay = eventsData.filter(event => event.date === dateString);
+                const hasEvents = eventsForThisDay.length > 0;
 
                 const dayCell = document.createElement('div');
                 dayCell.classList.add('day-cell', 'relative');
@@ -335,22 +364,29 @@
                     dayCell.appendChild(indicator);
                 }
 
-                // Removed the problematic line here:
-                // if (dateString === todayDateString) {
-                //     todayCell.classList.add('current-day');
-                // }
-
                 dayCell.innerHTML += `<span class="font-bold text-lg">${day}</span>`; // Number of the day
 
-                // Optional: Show first event name directly on calendar cell if space allows
-                const eventsForThisDay = eventsData.filter(event => event.date === dateString);
+                // Display up to 1 event name in the cell, and a "+X more" indicator
                 if (eventsForThisDay.length > 0) {
                     const eventNameSpan = document.createElement('span');
-                    eventNameSpan.classList.add('text-blue-700', 'text-xs', 'mt-1', 'truncate', 'w-full', 'px-1');
-                    // Changed text color to a darker shade of brand green for readability
-                    eventNameSpan.style.color = '#1a3b2a';
-                    eventNameSpan.textContent = eventsForThisDay[0].name; // Show only the first event name
+                    eventNameSpan.classList.add('event-display-in-cell');
+                    eventNameSpan.textContent = eventsForThisDay[0].name;
                     dayCell.appendChild(eventNameSpan);
+
+                    if (eventsForThisDay.length > 1) {
+                        const moreEventsIndicator = document.createElement('span');
+                        moreEventsIndicator.classList.add('more-events-indicator');
+                        // Handle Arabic pluralization for "more events"
+                        let remainingEventsCount = eventsForThisDay.length - 1;
+                        if (remainingEventsCount === 1) {
+                            moreEventsIndicator.textContent = "+1 أخرى";
+                        } else if (remainingEventsCount === 2) {
+                            moreEventsIndicator.textContent = "+2 أخريان";
+                        } else {
+                            moreEventsIndicator.textContent = `+${remainingEventsCount} أخرى`;
+                        }
+                        dayCell.appendChild(moreEventsIndicator);
+                    }
                 }
 
 
