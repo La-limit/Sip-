@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تقويم المناسبات في قطر</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7fafc; /* Fallback background color */
+            background-image: url('pic.png'); /* Set the logo as background - Corrected file name */
+            background-size: cover; /* Cover the entire background */
+            background-repeat: no-repeat; /* Do not repeat the background image */
+            background-position: center center; /* Center the background image */
+            background-attachment: fixed; /* Keep the background fixed during scroll */
+            color: #333; /* Ensure text is readable over the background */
+        }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+        }
+        .day-cell {
+            padding: 8px;
+            text-align: center;
+            border-radius: 8px;
+            background-color: rgba(255, 255, 255, 0.9); /* Slightly transparent white for readability */
+            border: 1px solid #e2e8f0;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            min-height: 80px; /* Adjust as needed */
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+            position: relative;
+        }
+        .day-cell.header {
+            background-color: #24543b; /* Dark green from brand identity */
+            color: #ffffff;
+            font-weight: bold;
+            cursor: default;
+            font-size: 1rem;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .day-cell.empty {
+            background-color: rgba(240, 244, 248, 0.8); /* Slightly transparent empty cells */
+            cursor: default;
+        }
+        .day-cell:not(.empty):not(.header):hover {
+            background-color: rgba(245, 255, 245, 0.95); /* Light green tint on hover */
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .day-cell.has-event {
+            border-color: #f2cb38; /* Golden yellow border for events */
+            background-color: rgba(232, 247, 236, 0.9); /* Very light green background for events */
+        }
+        .day-cell.current-day {
+            border: 2px solid #ef4444; /* Red border for current day (unchanged for visibility) */
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+        }
+        .event-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #f2cb38; /* Golden yellow indicator */
+            margin-top: 4px;
+            position: absolute;
+            top: 8px; /* Position at top right */
+            right: 8px;
+            box-shadow: 0 0 5px rgba(242, 203, 56, 0.5);
+        }
+        .day-cell.selected-day {
+            background-color: rgba(255, 240, 199, 0.95); /* Very light golden yellow for selected day with transparency */
+            border-color: #f2cb38; /* Golden yellow border */
+            box-shadow: 0 0 15px rgba(242, 203, 56, 0.4);
+        }
+        .event-list-item {
+            background-color: rgba(252, 252, 252, 0.9); /* Slightly transparent off-white for event details */
+            border-left: 4px solid #f2cb38; /* Golden yellow border for event details */
+        }
+        .logo-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .logo-container img {
+            max-width: 150px; /* Adjust logo size as needed */
+            height: auto;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+        @media (max-width: 768px) {
+            .day-cell {
+                min-height: 60px;
+                font-size: 0.8rem;
+            }
+            .event-indicator {
+                width: 6px;
+                height: 6px;
+                top: 5px;
+                right: 5px;
+            }
+            .logo-container img {
+                max-width: 100px;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 min-h-screen flex flex-col items-center">
+
+    <div class="max-w-6xl w-full bg-white rounded-xl shadow-lg p-6 mb-8">
+        <!-- Logo Section -->
+        <div class="logo-container">
+            <img src="pic.png" alt="Logo "> <!-- Corrected file name here -->
+        </div>
+
+        <h1 class="text-3xl font-extrabold text-center text-gray-800 mb-6">تقويم المناسبات في قطر</h1>
+
+        <!-- Calendar Header -->
+        <div class="flex items-center justify-between mb-6">
+            <button id="prevMonth" class="bg-[#24543b] hover:bg-[#1a3b2a] text-white font-bold py-2 px-4 rounded-lg transition duration-200 shadow-md">الشهر السابق</button>
+            <h2 id="currentMonthYear" class="text-2xl font-semibold text-gray-700 mx-4"></h2>
+            <button id="nextMonth" class="bg-[#24543b] hover:bg-[#1a3b2a] text-white font-bold py-2 px-4 rounded-lg transition duration-200 shadow-md">الشهر التالي</button>
+        </div>
+
+        <!-- Calendar Grid -->
+        <div id="calendar" class="calendar-grid">
+            <!-- Day headers will be injected here -->
+        </div>
+    </div>
+
+    <!-- Event Details Section -->
+    <div class="max-w-6xl w-full bg-white rounded-xl shadow-lg p-6">
+        <h3 class="text-2xl font-bold text-gray-800 mb-4 text-center">تفاصيل المناسبات لليوم المحدد</h3>
+        <div id="eventDetails" class="space-y-4">
+            <p class="text-gray-600 text-center">اختر تاريخًا من التقويم لعرض المناسبات.</p>
+        </div>
+    </div>
+
+    <script>
+        // Event data for 2025 and 2026
+        const eventsData = [
+            // June 2025
+            { "category": "أكاديمي / تعليمي", "date": "2025-06-11", "name": "الكارتينج في حلبة لوسيل (بداية)", "description": "فعاليات مستمرة للكارتينج.", "commercial_opportunity": "معدات رياضية، ملابس رياضية، منتجات ترفيهية.", "notes": "" },
+            { "category": "رياضي", "date": "2025-06-12", "name": "دوري FIBA 3x3 U23 للشباب - كرة السلة (بداية)", "description": "بطولة كرة سلة للشباب.", "commercial_opportunity": "ملابس كرة سلة، كرات، بضائع رياضية.", "notes": "" },
+            { "category": "رياضي", "date": "2025-06-18", "name": "دوري FIBA 3x3 U23 للشباب - كرة السلة (نهاية)", "description": "نهاية بطولة كرة سلة للشباب.", "commercial_opportunity": "ملابس كرة سلة، كرات، بضائع رياضية.", "notes": "" },
+            { "category": "مناسبة إسلامية", "date": "2025-06-26", "name": "رأس السنة الهجرية (محرم)", "description": "بداية العام الهجري الجديد.", "commercial_opportunity": "منتجات ذات طابع إسلامي، هدايا رمزية.", "notes": "التواريخ تعتمد على رؤية الهلال." },
+            { "category": "أكاديمي / تعليمي", "date": "2025-06-27", "name": "إجازة الصيف (بداية)", "description": "أطول فترة عطلة مدرسية.", "commercial_opportunity": "مستلزمات السفر، معدات رياضية، ملابس صيفية، كتب، منتجات ترفيهية.", "notes": "" },
+            // July 2025
+            { "category": "مناسبة إسلامية", "date": "2025-07-05", "name": "يوم عاشوراء", "description": "يوم صيام وذكرى.", "commercial_opportunity": "منتجات دينية، كتب إسلامية.", "notes": "" },
+            // August 2025
+            { "category": "عالمي / تجاري", "date": "2025-08-12", "name": "اليوم العالمي للشباب", "description": "تسليط الضوء على دور الشباب في التنمية.", "commercial_opportunity": "منتجات للشباب، أدوات تعليمية، منتجات ترفيهية.", "notes": "" },
+            { "category": "أكاديمي / تعليمي", "date": "2025-08-31", "name": "بداية دوام الطلاب (2025)", "description": "البداية الرسمية للعام الدراسي الجديد.", "commercial_opportunity": "لوازم مدرسية، زي مدرسي، إلكترونيات تعليمية، ملابس أطفال.", "notes": "" },
+            { "category": "أكاديمي / تعليمي", "date": "2025-08-31", "name": "إجازة الصيف (نهاية)", "description": "انتهاء أطول فترة عطلة مدرسية.", "commercial_opportunity": "مستلزمات السفر، معدات رياضية، ملابس صيفية، كتب، منتجات ترفيهية.", "notes": "" },
+            // September 2025
+            { "category": "مناسبة إسلامية", "date": "2025-09-15", "name": "المولد النبوي الشريف (أهل السنة)", "description": "ذكرى مولد النبي محمد.", "commercial_opportunity": "منتجات دينية، كتب، حلويات تقليدية.", "notes": "التواريخ تقديرية وتعتمد على رؤية الهلال (الشيعة قد يحتفلون في 21 سبتمبر)." },
+            { "category": "عالمي / تجاري", "date": "2025-09-27", "name": "اليوم العالمي للسياحة", "description": "تعزيز الوعي بأهمية السياحة.", "commercial_opportunity": "مستلزمات السفر، حقائب، كتب سفر، عروض سياحية.", "notes": "" },
+            { "category": "رياضي", "date": "2025-09-28", "name": "بطولة قطر كلاسيك PSA بلاتينيوم - إسكواش (بداية)", "description": "بطولة كبرى للإسكواش.", "commercial_opportunity": "معدات الإسكواش، ملابس رياضية، منتجات لياقة بدنية.", "notes": "تُقام في مجمع خليفة الدولي للتنس والإسكواش." },
+            // October 2025
+            { "category": "رياضي", "date": "2025-10-04", "name": "بطولة قطر كلاسيك PSA بلاتينيوم - إسكواش (نهاية)", "description": "نهاية بطولة كبرى للإسكواش.", "commercial_opportunity": "معدات الإسكواش، ملابس رياضية، منتجات لياقة بدنية.", "notes": "تُقام في مجمع خليفة الدولي للتنس والإسكواش." },
+            { "category": "عالمي / تجاري", "date": "2025-10-05", "name": "اليوم العالمي للمعلمين", "description": "تكريم دور المعلمين في بناء الأجيال.", "commercial_opportunity": "هدايا للمعلمين، كتب، لوازم مكتبية، منتجات تقديرية.", "notes": "" },
+            { "category": "رياضي", "date": "2025-10-08", "name": "بطولة العالم تحت 18 سنة للكرة الطائرة الشاطئية (بداية)", "description": "بطولة عالمية للكرة الطائرة الشاطئية للشباب.", "commercial_opportunity": "ملابس رياضية، معدات رياضية، منتجات متعلقة بالرياضات الشاطئية.", "notes": "" },
+            { "category": "رياضي", "date": "2025-10-11", "name": "بطولة العالم تحت 18 سنة للكرة الطائرة الشاطئية (نهاية)", "description": "نهاية بطولة عالمية للكرة الطائرة الشاطئية للشباب.", "commercial_opportunity": "ملابس رياضية، معدات رياضية، منتجات متعلقة بالرياضات الشاطئية.", "notes": "" },
+            { "category": "أكاديمي / تعليمي", "date": "2025-10-26", "name": "إجازة منتصف الفصل الدراسي الأول (2025) (بداية)", "description": "إجازة مدرسية قصيرة.", "commercial_opportunity": "ألعاب، كتب، منتجات ترفيهية منزلية، مستلزمات الرحلات القصيرة.", "notes": "" },
+            { "category": "أكاديمي / تعليمي", "date": "2025-10-30", "name": "إجازة منتصف الفصل الدراسي الأول (2025) (نهاية)", "description": "نهاية إجازة مدرسية قصيرة.", "commercial_opportunity": "ألعاب، كتب، منتجات ترفيهية منزلية، مستلزمات الرحلات القصيرة.", "notes": "" },
+            { "category": "رياضي", "date": "2025-10-30", "name": "بطولة العالم للدراجات المائية 2025 (بداية)", "description": "مسابقة دولية للدراجات المائية.", "commercial_opportunity": "معدات الرياضات المائية، ملابس سباحة، منتجات ترفيهية.", "notes": "تُقام في الحي الثقافي كتارا." },
+            // November 2025
+            { "category": "رياضي", "date": "2025-11-01", "name": "بطولة العالم للدراجات المائية 2025 (نهاية)", "description": "نهاية مسابقة دولية للدراجات المائية.", "commercial_opportunity": "معدات الرياضات المائية، ملابس سباحة، منتجات ترفيهية.", "notes": "تُقام في الحي الثقافي كتارا." },
+            { "category": "رياضي", "date": "2025-11-03", "name": "كأس العالم تحت 17 سنة FIFA قطر 2025™ (بداية)", "description": "بطولة كبرى لكرة القدم للشباب.", "commercial_opportunity": "ملابس كرة القدم، كرات، بضائع المشجعين، شاشات عرض.", "notes": "النسخة الأولى التي تضم 48 فريقاً، في ملاعب مختلفة." },
+            { "category": "رياضي", "date": "2025-11-06", "name": "بطولة Elite 16 للكرة الطائرة الشاطئية العالمية (بداية)", "description": "جولة احترافية عالمية للكرة الطائرة الشاطئية.", "commercial_opportunity": "ملابس رياضية، معدات رياضية، منتجات متعلقة بالرياضات الشاطئية.", "notes": "" },
+            { "category": "رياضي", "date": "2025-11-07", "name": "بطولة دول مجلس التعاون الخليجي للبادل 2025 (بداية)", "description": "مسابقة إقليمية للبادل.", "commercial_opportunity": "مضارب بادل، كرات، ملابس بادل، أحذية رياضية.", "notes": "تُقام في مجمع خليفة الدولي للتنس والإسكواش." },
+            { "category": "رياضي", "date": "2025-11-09", "name": "بطولة Elite 16 للكرة الطائرة الشاطئية العالمية (نهاية)", "description": "نهاية جولة احترافية عالمية للكرة الطائرة الشاطئية.", "commercial_opportunity": "ملابس رياضية، معدات رياضية، منتجات متعلقة بالرياضات الشاطئية.", "notes": "" },
+            { "category": "رياضي", "date": "2025-11-11", "name": "بطولة دول مجلس التعاون الخليجي للبادل 2025 (نهاية)", "description": "نهاية مسابقة إقليمية للبادل.", "commercial_opportunity": "مضارب بادل، كرات، ملابس بادل، أحذية رياضية.", "notes": "تُقام في مجمع خليفة الدولي للتنس والإسكواش." },
+            { "category": "عالمي / تجاري", "date": "2025-11-11", "name": "يوم العزاب (11.11)", "description": "حدث تسوق عالمي ضخم عبر الإنترنت.", "commercial_opportunity": "خصومات كبرى، عروض فلاش، عروض حصرية.", "notes": "" },
+            { "category": "ثقافي / ترفيهي", "date": "2025-11-20", "name": "مهرجان الدوحة السينمائي 2025 (بداية)", "description": "فعاليات سينمائية، مسابقات أفلام.", "commercial_opportunity": "أجهزة عرض، شاشات، منتجات ترفيه منزلي، كتب عن السينما.", "notes": "" },
+            { "category": "رياضي", "date": "2025-11-20", "name": "بطولة قطر المفتوحة للتايكوندو G1 (بداية)", "description": "بطولة دولية للتايكوندو.", "commercial_opportunity": "معدات تايكوندو، ملابس فنون قتالية، مستلزمات تدريب.", "notes": "تُقام في صالة لوسيل." },
+            { "category": "رياضي", "date": "2025-11-23", "name": "بطولة قطر المفتوحة للتايكوندو G1 (نهاية)", "description": "نهاية بطولة دولية للتايكوندو.", "commercial_opportunity": "معدات تايكوندو، ملابس فنون قتالية، مستلزمات تدريب.", "notes": "تُقام في صالة لوسيل." },
+            { "category": "رياضي", "date": "2025-11-27", "name": "سلسلة قطر الدولية - النسخة الثالثة 2025 - جولف (بداية)", "description": "فعالية كبرى للجولف.", "commercial_opportunity": "معدات جولف، ملابس جولف، إكسسوارات.", "notes": "تُقام في نادي الدوحة للجولف." },
+            { "category": "ثقافي / ترفيهي", "date": "2025-11-28", "name": "مهرجان الدوحة السينمائي 2025 (نهاية)", "description": "نهاية فعاليات سينمائية، مسابقات أفلام.", "commercial_opportunity": "أجهزة عرض، شاشات، منتجات ترفيه منزلي، كتب عن السينما.", "notes": "" },
+            { "category": "عالمي / تجاري", "date": "2025-11-28", "name": "الجمعة السوداء (Black Friday)", "description": "بداية موسم تسوق العطلات بخصومات كبرى.", "commercial_opportunity": "خصومات واسعة النطاق على جميع الفئات، عروض حصرية.", "notes": "" },
+            { "category": "رياضي", "date": "2025-11-28", "name": "جائزة الخطوط الجوية القطرية الكبرى للفورمولا 1 قطر 2025 (بداية)", "description": "فعالية دولية رفيعة المستوى لسباقات السيارات.", "commercial_opportunity": "بضائع الفورمولا 1، إلكترونيات، منتجات متعلقة بالسيارات.", "notes": "تُقام في حلبة لوسيل الدولية." },
+            { "category": "رياضي", "date": "2025-11-28", "name": "بطولة الفورمولا 2 FIA 2025 (بداية)", "description": "سباق سيارات دولي.", "commercial_opportunity": "بضائع السباقات، مستلزمات السيارات الرياضية.", "notes": "تُقام في حلبة لوسيل الدولية بالتزامن مع الفورمولا 1." },
+            { "category": "رياضي", "date": "2025-11-30", "name": "سلسلة قطر الدولية - النسخة الثالثة 2025 - جولف (نهاية)", "description": "نهاية فعالية كبرى للجولف.", "commercial_opportunity": "معدات جولف، ملابس جولف، إكسسوارات.", "notes": "تُقام في نادي الدوحة للجولف." },
+            { "category": "رياضي", "date": "2025-11-30", "name": "جائزة الخطوط الجوية القطرية الكبرى للفورمولا 1 قطر 2025 (نهاية)", "description": "نهاية فعالية دولية رفيعة المستوى لسباقات السيارات.", "commercial_opportunity": "بضائع الفورمولا 1، إلكترونيات، منتجات متعلقة بالسيارات.", "notes": "تُقام في حلبة لوسيل الدولية." },
+            { "category": "رياضي", "date": "2025-11-30", "name": "بطولة الفورمولا 2 FIA 2025 (نهاية)", "description": "نهاية سباق سيارات دولي.", "commercial_opportunity": "بضائع السباقات، مستلزمات السيارات الرياضية.", "notes": "تُقام في حلبة لوسيل الدولية بالتزامن مع الفورمولا 1." },
+            // December 2025
+            { "category": "عالمي / تجاري", "date": "2025-12-01", "name": "اثنين الإنترنت (Cyber Monday)", "description": "يوم تسوق عبر الإنترنت يتبع الجمعة السوداء.", "commercial_opportunity": "عروض إلكترونية، صفقات عبر الإنترنت، شحن مجاني.", "notes": "" },
+            { "category": "رياضي", "date": "2025-12-01", "name": "كأس العرب FIFA 2025 (بداية)", "description": "احتفال بكرة القدم والوحدة العربية.", "commercial_opportunity": "بضائع كرة القدم العربية، ملابس المشجعين، شاشات عرض.", "notes": "تُقام في ملاعب مختلفة في قطر." },
+            { "category": "عالمي / تجاري", "date": "2025-12-03", "name": "اليوم الدولي للأشخاص ذوي الإعاقة", "description": "تعزيز حقوق ورفاهية الأشخاص ذوي الإعاقة.", "commercial_opportunity": "منتجات مساعدة، تعزيز إمكانية الوصول، دعم مبادرات خيرية.", "notes": "" },
+            { "category": "رياضي", "date": "2025-12-04", "name": "نهائي كأس العالم للرماية ISSF (بداية)", "description": "بطولة عالمية للرماية.", "commercial_opportunity": "معدات رماية، ملابس رياضية، منتجات متعلقة بالرياضات الدقيقة.", "notes": "" },
+            { "category": "رياضي", "date": "2025-12-09", "name": "نهائي كأس العالم للرماية ISSF (نهاية)", "description": "نهاية بطولة عالمية للرماية.", "commercial_opportunity": "معدات رماية، ملابس رياضية، منتجات متعلقة بالرياضات الدقيقة.", "notes": "" },
+            { "category": "رياضي", "date": "2025-12-11", "name": "نهائي بطولة العالم للترايثلون T100 قطر 2025 (بداية)", "description": "بطولة عالمية للترايثلون.", "commercial_opportunity": "معدات ترايثلون، ملابس رياضية، منتجات لياقة بدنية.", "notes": "" },
+            { "category": "رياضي", "date": "2025-12-13", "name": "نهائي بطولة العالم للترايثلون T100 قطر 2025 (نهاية)", "description": "نهاية بطولة عالمية للترايثلون.", "commercial_opportunity": "معدات ترايثلون، ملابس رياضية، منتجات لياقة بدنية.", "notes": "" },
+            { "category": "عطلة رسمية", "date": "2025-12-18", "name": "اليوم الوطني لدولة قطر", "description": "توحيد قطر عام 1878.", "commercial_opportunity": "منتجات وطنية، عروض ذات طابع قطري، سلع تذكارية، منتجات محلية.", "notes": "" },
+            { "category": "رياضي", "date": "2025-12-18", "name": "كأس العرب FIFA 2025 (نهاية)", "description": "نهاية احتفال بكرة القدم والوحدة العربية.", "commercial_opportunity": "بضائع كرة القدم العربية، ملابس المشجعين، شاشات عرض.", "notes": "تُقام في ملاعب مختلفة في قطر." },
+            { "category": "عالمي / تجاري", "date": "2025-12-25", "name": "عيد الميلاد (Christmas)", "description": "احتفال مسيحي، تبادل الهدايا.", "commercial_opportunity": "هدايا، ديكورات احتفالية، منتجات موسمية.", "notes": "ليس عطلة رسمية في قطر، ولكن تحتفل به الجالية الوافدة." },
+            { "category": "رياضي", "date": "2025-12-25", "name": "بطولة العالم للشطرنج السريع والخاطف (بداية)", "description": "بطولة عالمية للشطرنج.", "commercial_opportunity": "ألعاب شطرنج، كتب عن الشطرنج، منتجات تعليمية.", "notes": "" },
+            { "category": "أكاديمي / تعليمي", "date": "2025-12-28", "name": "إجازة منتصف العام (الشتاء، 2025) (بداية)", "description": "إجازة مدرسية طويلة.", "commercial_opportunity": "هدايا العطلات، مستلزمات السفر، ملابس شتوية، ألعاب.", "notes": "" },
+            { "category": "رياضي", "date": "2025-12-31", "name": "بطولة العالم للشطرنج السريع والخاطف (نهاية)", "description": "نهاية بطولة عالمية للشطرنج.", "commercial_opportunity": "ألعاب شطرنج، كتب عن الشطرنج، منتجات تعليمية.", "notes": "" },
+
+            // January 2026
+            { "category": "عطلة رسمية", "date": "2026-01-01", "name": "رأس السنة الميلادية", "description": "بداية العام الميلادي الجديد.", "commercial_opportunity": "عروض \"بدايات جديدة\"، منتجات \"قرارات العام الجديد\"، مبيعات ما بعد العطلات.", "notes": "" },
+            { "category": "أكاديمي / تعليمي", "date": "2026-01-11", "name": "إجازة منتصف العام (الشتاء، 2025) (نهاية)", "description": "نهاية إجازة مدرسية طويلة.", "commercial_opportunity": "هدايا العطلات، مستلزمات السفر، ملابس شتوية، ألعاب.", "notes": "" },
+            { "category": "مناسبة إسلامية", "date": "2026-01-16", "name": "ليلة الإسراء والمعراج", "description": "ذكرى رحلة النبي محمد المعراجية.", "commercial_opportunity": "منتجات دينية، كتب إسلامية، هدايا روحية.", "notes": "التواريخ تقديرية وتعتمد على رؤية الهلال." },
+            { "category": "ثقافي / ترفيهي", "date": "2026-01-22", "name": "مهرجان كتارا للعود (تقديري)", "description": "احتفال بآلة العود والموسيقى العربية. (تواريخ تقديرية)", "commercial_opportunity": "آلات موسيقية، كتب موسيقى، منتجات ثقافية عربية.", "notes": "سنوي، تواريخ 2026 غير محددة بعد." },
+            { "category": "ثقافي / ترفيهي", "date": "2026-01-16", "name": "مهرجان قطر للطائرات الورقية (تقديري)", "description": "عرض إبداعي وثقافي للطائرات الورقية. (تواريخ تقديرية)", "commercial_opportunity": "طائرات ورقية، مستلزمات الأنشطة الخارجية، ألعاب أطفال.", "notes": "سنوي، تواريخ 2026 غير محددة بعد." },
+            { "category": "رياضي", "date": "2026-01-01", "name": "جولات الفروسية قطر 2026 (بداية تقديرية)", "description": "فعاليات فروسية سنوية.", "commercial_opportunity": "معدات فروسية، ملابس ركوب الخيل، منتجات متعلقة بالخيل.", "notes": "تُقام في مركز الشقب للفروسية." },
+            { "category": "ثقافي / ترفيهي", "date": "2026-01-30", "name": "معرض الدوحة للمجوهرات والساعات (DJWE) 2026 (بداية)", "description": "معرض فاخر للمجوهرات والساعات.", "commercial_opportunity": "منتجات فاخرة، مجوهرات، ساعات، هدايا راقية.", "notes": "تقديري: 29 يناير - 4 فبراير 2026." },
+            // February 2026
+            { "category": "ثقافي / ترفيهي", "date": "2026-02-05", "name": "معرض الدوحة للمجوهرات والساعات (DJWE) 2026 (نهاية)", "description": "نهاية معرض فاخر للمجوهرات والساعات.", "commercial_opportunity": "منتجات فاخرة، مجوهرات، ساعات، هدايا راقية.", "notes": "تقديري: 29 يناير - 4 فبراير 2026." },
+            { "category": "مناسبة إسلامية", "date": "2026-02-03", "name": "ليلة النصف من شعبان", "description": "ليلة الغفران، وقت للعبادة.", "commercial_opportunity": "منتجات دينية، مستلزمات العبادة.", "notes": "التواريخ تعتمد على رؤية الهلال." },
+            { "category": "عطلة رسمية", "date": "2026-02-10", "name": "اليوم الرياضي للدولة", "description": "تعزيز الصحة واللياقة البدنية والمشاركة المجتمعية.", "commercial_opportunity": "معدات اللياقة البدنية، ملابس رياضية، منتجات صحية، عروض رياضية.", "notes": "" },
+            { "category": "رياضي", "date": "2026-02-08", "name": "بطولة قطر توتال إنرجيز المفتوحة 2026 (تنس) (بداية)", "description": "بطولة تنس دولية كبرى.", "commercial_opportunity": "معدات تنس، ملابس رياضية، منتجات لياقة بدنية.", "notes": "تُقام في مجمع خليفة الدولي للتنس والإسكواش." },
+            { "category": "رياضي", "date": "2026-02-14", "name": "بطولة قطر توتال إنرجيز المفتوحة 2026 (تنس) (نهاية)", "description": "نهاية بطولة تنس دولية كبرى.", "commercial_opportunity": "معدات تنس، ملابس رياضية، منتجات لياقة بدنية.", "notes": "تُقام في مجمع خليفة الدولي للتنس والإسكواش." },
+            { "category": "أكاديمي / تعليمي", "date": "2026-02-09", "name": "إجازة الربيع (بداية)", "description": "إجازة مدرسية قصيرة.", "commercial_opportunity": "مستلزمات الرحلات القصيرة، أنشطة خارجية، كتب، ألعاب.", "notes": "" },
+            { "category": "أكاديمي / تعليمي", "date": "2026-02-13", "name": "إجازة الربيع (نهاية)", "description": "نهاية إجازة مدرسية قصيرة.", "commercial_opportunity": "مستلزمات الرحلات القصيرة، أنشطة خارجية، كتب، ألعاب.", "notes": "" },
+            { "category": "عالمي / تجاري", "date": "2026-02-14", "name": "عيد الحب", "description": "مناسبة عالمية كبرى لتقديم الهدايا الرومانسية.", "commercial_opportunity": "هدايا رومانسية، زهور، شوكولاتة، مجوهرات، عروض للأزواج.", "notes": "" },
+            { "category": "عالمي / تجاري", "date": "2026-02-15", "name": "يوم التوعية بالعزاب", "description": "يوم للاحتفال بالذات والصداقات.", "commercial_opportunity": "عروض على منتجات العناية بالذات، هدايا للأصدقاء، عروض ترفيهية.", "notes": "" },
+            { "category": "رياضي", "date": "2026-02-16", "name": "بطولة قطر إكسون موبيل المفتوحة 2026 (تنس) (بداية)", "description": "بطولة تنس دولية كبرى للرجال.", "commercial_opportunity": "معدات تنس، ملابس رياضية، منتجات لياقة بدنية.", "notes": "تُقام في مجمع خليفة الدولي للتنس والإسكواش." },
+            { "category": "رياضي", "date": "2026-02-21", "name": "بطولة قطر إكسون موبيل المفتوحة 2026 (تنس) (نهاية)", "description": "نهاية بطولة تنس دولية كبرى للرجال.", "commercial_opportunity": "معدات تنس، ملابس رياضية، منتجات لياقة بدنية.", "notes": "تُقام في مجمع خليفة الدولي للتنس والإسكواش." },
+            { "category": "مناسبة إسلامية", "date": "2026-02-18", "name": "بداية شهر رمضان", "description": "شهر الصيام والعبادة.", "commercial_opportunity": "مواد غذائية للإفطار والسحور، ديكورات منزلية، أزياء محتشمة، هدايا العيد.", "notes": "التواريخ تقديرية وتعتمد على رؤية الهلال." },
+            { "category": "ثقافي / ترفيهي", "date": "2026-02-01", "name": "Art Basel Qatar (تقديري)", "description": "معرض فني دولي يحتفي بالمشهد الثقافي في قطر ومنطقة الشرق الأوسط وشمال إفريقيا. (تواريخ تقديرية)", "commercial_opportunity": "أعمال فنية، كتب فنية، منتجات تصميم، سلع فاخرة.", "notes": "يُقام في M7 ومنطقة مشيرب للتصميم." },
+            // March 2026
+            { "category": "عطلة رسمية", "date": "2026-03-01", "name": "عطلة البنوك في مارس", "description": "عطلة مصرفية عامة محددة.", "commercial_opportunity": "عروض نهاية الأسبوع، مبيعات قصيرة الأجل.", "notes": "" },
+            { "category": "عالمي / تجاري", "date": "2026-03-08", "name": "اليوم العالمي للمرأة", "description": "الاحتفال بإنجازات المرأة وتعزيز المساواة بين الجنسين.", "commercial_opportunity": "هدايا للنساء، منتجات عناية شخصية، عروض خاصة، دعم مبادرات تمكين المرأة.", "notes": "" },
+            { "category": "مناسبة إسلامية", "date": "2026-03-16", "name": "ليلة القدر", "description": "أقدس ليلة في رمضان.", "commercial_opportunity": "منتجات دينية، كتب، تشجيع الصدقات.", "notes": "التواريخ تقديرية وتعتمد على رؤية الهلال." },
+            { "category": "عطلة رسمية", "date": "2026-03-20", "name": "عيد الفطر (تاريخ تقديري) (بداية)", "description": "نهاية شهر رمضان، احتفالات وهدايا.", "commercial_opportunity": "هدايا العيد، أزياء، إلكترونيات، سلع منزلية، حلويات، منتجات عناية شخصية.", "notes": "التواريخ تقديرية وتعتمد على رؤية الهلال." },
+            { "category": "عطلة رسمية", "date": "2026-03-22", "name": "عيد الفطر (تاريخ تقديري) (نهاية)", "description": "نهاية شهر رمضان، احتفالات وهدايا.", "commercial_opportunity": "هدايا العيد، أزياء، إلكترونيات، سلع منزلية، حلويات، منتجات عناية شخصية.", "notes": "التواريخ تقديرية وتعتمد على رؤية الهلال." },
+            { "category": "رياضي", "date": "2026-03-22", "name": "بطولة العالم للتحمل WEC Prologue & Season Opener 2026 (بداية)", "description": "سباق سيارات endurance عالمي.", "commercial_opportunity": "بضائع السباقات، مستلزمات السيارات الرياضية، منتجات متعلقة بالسرعة.", "notes": "مقدمة 22-23 مارس، السباق 26-28 مارس في حلبة لوسيل الدولية." },
+            { "category": "رياضي", "date": "2026-03-28", "name": "بطولة العالم للتحمل WEC Prologue & Season Opener 2026 (نهاية)", "description": "نهاية سباق سيارات endurance عالمي.", "commercial_opportunity": "بضائع السباقات، مستلزمات السيارات الرياضية، منتجات متعلقة بالسرعة.", "notes": "مقدمة 22-23 مارس، السباق 26-28 مارس في حلبة لوسيل الدولية." },
+            // April 2026
+            { "category": "رياضي", "date": "2026-04-10", "name": "جائزة الخطوط الجوية القطرية الكبرى للدراجات النارية MotoGP™ قطر 2026 (بداية تقديرية)", "description": "سباق دراجات نارية دولي رفيع المستوى.", "commercial_opportunity": "بضائع MotoGP، ملابس رياضية، منتجات متعلقة بالدراجات النارية.", "notes": "التواريخ تقديرية." },
+            { "category": "رياضي", "date": "2026-04-12", "name": "جائزة الخطوط الجوية القطرية الكبرى للدراجات النارية MotoGP™ قطر 2026 (نهاية تقديرية)", "description": "نهاية سباق دراجات نارية دولي رفيع المستوى.", "commercial_opportunity": "بضائع MotoGP، ملابس رياضية، منتجات متعلقة بالدراجات النارية.", "notes": "التواريخ تقديرية." },
+            { "category": "ثقافي / ترفيهي", "date": "2026-04-16", "name": "Design Doha Biennale 2026 (بداية)", "description": "بينالي تصميم يعزز مكانة الدوحة كمركز عالمي للتصميم.", "commercial_opportunity": "منتجات تصميم، ديكورات منزلية، كتب عن التصميم، منتجات فنية.", "notes": "" },
+            { "category": "رياضي", "date": "2026-04-15", "name": "كأس العالم للجمباز الفني (بداية)", "description": "بطولة عالمية للجمباز.", "commercial_opportunity": "معدات جمباز، ملابس رياضية، منتجات لياقة بدنية.", "notes": "" },
+            { "category": "رياضي", "date": "2026-04-18", "name": "كأس العالم للجمباز الفني (نهاية)", "description": "نهاية بطولة عالمية للجمباز.", "commercial_opportunity": "معدات جمباز، ملابس رياضية، منتجات لياقة بدنية.", "notes": "" },
+            // May 2026
+            { "category": "ثقافي / ترفيهي", "date": "2026-05-08", "name": "معرض الدوحة الدولي للكتاب (تقديري)", "description": "معرض سنوي للكتب. (تواريخ تقديرية)", "commercial_opportunity": "كتب، قرطاسية، لوازم قراءة، كتب إلكترونية.", "notes": "سنوي، تواريخ 2026 غير محددة بعد." },
+            { "category": "مناسبة إسلامية", "date": "2026-05-25", "name": "يوم عرفة", "description": "يسبق عيد الأضحى، يوم دعاء.", "commercial_opportunity": "مستلزمات العبادة، منتجات خيرية.", "notes": "التواريخ تقديرية وتعتمد على رؤية الهلال." },
+            { "category": "عطلة رسمية", "date": "2026-05-27", "name": "عيد الأضحى (تاريخ تقديري) (بداية)", "description": "إحياء ذكرى تضحية النبي إبراهيم، احتفالات.", "commercial_opportunity": "هدايا العيد، ملابس تقليدية، مستلزمات الضيافة، منتجات خيرية.", "notes": "التواريخ تقديرية وتعتمد على رؤية الهلال." },
+            { "category": "عطلة رسمية", "date": "2026-05-29", "name": "عيد الأضحى (تاريخ تقديري) (نهاية)", "description": "إحياء ذكرى تضحية النبي إبراهيم، احتفالات.", "commercial_opportunity": "هدايا العيد، ملابس تقليدية، مستلزمات الضيافة، منتجات خيرية.", "notes": "التواريخ تقديرية وتعتمد على رؤية الهلال." },
+            // June 2026
+            { "category": "عالمي / تجاري", "date": "2026-06-05", "name": "اليوم العالمي للبيئة", "description": "التركيز على حماية البيئة والاستدامة.", "commercial_opportunity": "منتجات صديقة للبيئة، حلول مستدامة، عروض على المنتجات العضوية.", "notes": "" },
+            { "category": "مناسبة إسلامية", "date": "2026-06-16", "name": "رأس السنة الهجرية (محرم)", "description": "بداية العام الهجري الجديد.", "commercial_opportunity": "منتجات ذات طابع إسلامي، هدايا رمزية.", "notes": "التواريخ تقديرية وتعتمد على رؤية الهلال." },
+            { "category": "عالمي / تجاري", "date": "2026-06-21", "name": "عيد الأب", "description": "مناسبة لتقديم الهدايا للآباء.", "commercial_opportunity": "هدايا للآباء، أدوات، إلكترونيات، منتجات شخصية.", "notes": "" },
+            { "category": "مناسبة إسلامية", "date": "2026-06-26", "name": "يوم عاشوراء", "description": "يوم صيام وذكرى.", "commercial_opportunity": "منتجات دينية، كتب إسلامية.", "notes": "التواريخ تقديرية وتعتمد على رؤية الهلال." },
+            { "category": "ثقافي / ترفيهي", "date": "2026-06-30", "name": "Design Doha Biennale 2026 (نهاية)", "description": "نهاية بينالي تصميم يعزز مكانة الدوحة كمركز عالمي للتصميم.", "commercial_opportunity": "منتجات تصميم، ديكورات منزلية، كتب عن التصميم، منتجات فنية.", "notes": "" },
+            // July 2026
+            { "category": "أكاديمي / تعليمي", "date": "2026-07-01", "name": "إجازة الصيف (بداية)", "description": "أطول فترة عطلة مدرسية.", "commercial_opportunity": "مستلزمات السفر، معدات رياضية، ملابس صيفية، كتب، منتجات ترفيهية.", "notes": "" },
+            // August 2026
+            { "category": "أكاديمي / تعليمي", "date": "2026-08-29", "name": "إجازة الصيف (نهاية)", "description": "نهاية أطول فترة عطلة مدرسية.", "commercial_opportunity": "مستلزمات السفر، معدات رياضية، ملابس صيفية، كتب، منتجات ترفيهية.", "notes": "" },
+            { "category": "مناسبة إسلامية", "date": "2026-08-25", "name": "المولد النبوي الشريف", "description": "ذكرى مولد النبي محمد.", "commercial_opportunity": "منتجات دينية، كتب، حلويات تقليدية.", "notes": "التواريخ تقديرية وتعتمد على رؤية الهلال (الشيعة: 26 أغسطس)." },
+            // November 2026
+            { "category": "رياضي", "date": "2026-11-01", "name": "بطولة العالم للرماية ISSF (بداية تقديرية)", "description": "بطولة عالمية للرماية.", "commercial_opportunity": "معدات رماية، ملابس رياضية، منتجات متعلقة بالرياضات الدقيقة.", "notes": "" },
+            { "category": "رياضي", "date": "2026-11-15", "name": "بطولة العالم للرماية ISSF (نهاية تقديرية)", "description": "نهاية بطولة عالمية للرماية.", "commercial_opportunity": "معدات رماية، ملابس رياضية، منتجات متعلقة بالرياضات الدقيقة.", "notes": "" },
+            { "category": "عالمي / تجاري", "date": "2026-11-11", "name": "يوم العزاب (11.11)", "description": "حدث تسوق عالمي ضخم عبر الإنترنت.", "commercial_opportunity": "خصومات كبرى، عروض فلاش، عروض حصرية.", "notes": "" },
+            { "category": "عالمي / تجاري", "date": "2026-11-27", "name": "الجمعة السوداء (Black Friday)", "description": "بداية موسم تسوق العطلات بخصومات كبرى.", "commercial_opportunity": "خصومات واسعة النطاق على جميع الفئات، عروض حصرية.", "notes": "" },
+            { "category": "رياضي", "date": "2026-11-27", "name": "جائزة الخطوط الجوية القطرية الكبرى للفورمولا 1 قطر 2026 (بداية تقديرية)", "description": "فعالية دولية رفيعة المستوى لسباقات السيارات.", "commercial_opportunity": "بضائع الفورمولا 1، إلكترونيات، منتجات متعلقة بالسيارات.", "notes": "تُقام في حلبة لوسيل الدولية." },
+            { "category": "رياضي", "date": "2026-11-29", "name": "جائزة الخطوط الجوية القطرية الكبرى للفورمولا 1 قطر 2026 (نهاية تقديرية)", "description": "نهاية فعالية دولية رفيعة المستوى لسباقات السيارات.", "commercial_opportunity": "بضائع الفورمولا 1، إلكترونيات، منتجات متعلقة بالسيارات.", "notes": "تُقام في حلبة لوسيل الدولية." },
+            { "category": "عالمي / تجاري", "date": "2026-11-30", "name": "اثنين الإنترنت (Cyber Monday)", "description": "يوم تسوق عبر الإنترنت يتبع الجمعة السوداء.", "commercial_opportunity": "عروض إلكترونية، صفقات عبر الإنترنت، شحن مجاني.", "notes": "" },
+            // December 2026
+            { "category": "عطلة رسمية", "date": "2026-12-18", "name": "اليوم الوطني لدولة قطر", "description": "توحيد قطر عام 1878.", "commercial_opportunity": "منتجات وطنية، عروض ذات طابع قطري، سلع تذكارية، منتجات محلية.", "notes": "" },
+            { "category": "عالمي / تجاري", "date": "2026-12-25", "name": "عيد الميلاد (Christmas)", "description": "احتفال مسيحي، تبادل الهدايا.", "commercial_opportunity": "هدايا، ديكورات احتفالية، منتجات موسمية.", "notes": "" }
+        ];
+
+        const calendarEl = document.getElementById('calendar');
+        const currentMonthYearEl = document.getElementById('currentMonthYear');
+        const prevMonthBtn = document.getElementById('prevMonth');
+        const nextMonthBtn = document.getElementById('nextMonth');
+        const eventDetailsEl = document.getElementById('eventDetails');
+
+        let currentMonth = new Date().getMonth();
+        let currentYear = new Date().getFullYear();
+        const today = new Date();
+        const todayDateString = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
+
+        const monthNames = [
+            "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
+            "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"
+        ];
+        const dayNames = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+
+        function renderCalendar() {
+            calendarEl.innerHTML = ''; // Clear previous calendar
+            eventDetailsEl.innerHTML = '<p class="text-gray-600 text-center">اختر تاريخًا من التقويم لعرض المناسبات.</p>'; // Clear event details
+
+            currentMonthYearEl.textContent = `${monthNames[currentMonth]} ${currentYear}`;
+
+            // Add day headers
+            dayNames.forEach(day => {
+                const dayHeader = document.createElement('div');
+                dayHeader.classList.add('day-cell', 'header');
+                dayHeader.textContent = day;
+                calendarEl.appendChild(dayHeader);
+            });
+
+            const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+            // Add empty cells for the days before the first day of the month
+            for (let i = 0; i < firstDayOfMonth; i++) {
+                const emptyCell = document.createElement('div');
+                emptyCell.classList.add('day-cell', 'empty');
+                calendarEl.appendChild(emptyCell);
+            }
+
+            // Add days of the month
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateString = `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+                const hasEvents = eventsData.some(event => event.date === dateString);
+
+                const dayCell = document.createElement('div');
+                dayCell.classList.add('day-cell', 'relative');
+                dayCell.dataset.date = dateString;
+
+                if (hasEvents) {
+                    dayCell.classList.add('has-event');
+                    const indicator = document.createElement('span');
+                    indicator.classList.add('event-indicator');
+                    dayCell.appendChild(indicator);
+                }
+
+                if (dateString === todayDateString) {
+                    dayCell.classList.add('current-day');
+                }
+
+                dayCell.innerHTML += `<span class="font-bold text-lg">${day}</span>`; // Number of the day
+
+                // Optional: Show first event name directly on calendar cell if space allows
+                const eventsForThisDay = eventsData.filter(event => event.date === dateString);
+                if (eventsForThisDay.length > 0) {
+                    const eventNameSpan = document.createElement('span');
+                    eventNameSpan.classList.add('text-blue-700', 'text-xs', 'mt-1', 'truncate', 'w-full', 'px-1');
+                    // Changed text color to a darker shade of brand green for readability
+                    eventNameSpan.style.color = '#1a3b2a';
+                    eventNameSpan.textContent = eventsForThisDay[0].name; // Show only the first event name
+                    dayCell.appendChild(eventNameSpan);
+                }
+
+
+                dayCell.addEventListener('click', () => {
+                    displayEventDetails(dateString);
+                    // Remove 'selected-day' from previously selected cell
+                    const prevSelected = document.querySelector('.selected-day');
+                    if (prevSelected) {
+                        prevSelected.classList.remove('selected-day');
+                    }
+                    // Add 'selected-day' to current cell
+                    dayCell.classList.add('selected-day');
+                });
+                calendarEl.appendChild(dayCell);
+            }
+        }
+
+        function displayEventDetails(dateString) {
+            const eventsForDate = eventsData.filter(event => event.date === dateString);
+            eventDetailsEl.innerHTML = ''; // Clear previous details
+
+            if (eventsForDate.length === 0) {
+                eventDetailsEl.innerHTML = `<p class="text-gray-600 text-center">لا توجد مناسبات بتاريخ ${dateString}.</p>`;
+                return;
+            }
+
+            eventsForDate.forEach(event => {
+                const eventItem = document.createElement('div');
+                eventItem.classList.add('event-list-item', 'p-4', 'rounded-lg', 'shadow-sm', 'border-l-4');
+                // Ensuring event item border matches brand color
+                eventItem.style.borderColor = '#f2cb38';
+                eventItem.innerHTML = `
+                    <p class="text-lg font-semibold text-gray-800 mb-1">${event.name}</p>
+                    <p class="text-sm text-gray-700 mb-1"><strong>الفئة:</strong> ${event.category}</p>
+                    <p class="text-sm text-gray-700 mb-1"><strong>الوصف:</strong> ${event.description}</p>
+                    <p class="text-sm text-gray-700 mb-1"><strong>الفرصة التجارية:</strong> ${event.commercial_opportunity}</p>
+                    ${event.notes ? `<p class="text-xs text-gray-500"><strong>ملاحظات:</strong> ${event.notes}</p>` : ''}
+                `;
+                eventDetailsEl.appendChild(eventItem);
+            });
+        }
+
+        prevMonthBtn.addEventListener('click', () => {
+            currentMonth--;
+            if (currentMonth < 0) {
+                currentMonth = 11;
+                currentYear--;
+            }
+            renderCalendar();
+        });
+
+        nextMonthBtn.addEventListener('click', () => {
+            currentMonth++;
+            if (currentMonth > 11) {
+                currentMonth = 0;
+                currentYear++;
+            }
+            renderCalendar();
+        });
+
+        // Initial render
+        renderCalendar();
+        // Automatically display events for today if any exist
+        displayEventDetails(todayDateString);
+        // Highlight today's date initially
+        const todayCell = document.querySelector(`.day-cell[data-date="${todayDateString}"]`);
+        if (todayCell) {
+            todayCell.classList.add('selected-day');
+        }
+
+    </script>
+</body>
+</html>
